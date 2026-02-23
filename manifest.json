@@ -1,7 +1,7 @@
 {
   "name": "Family Travel App",
   "short_name": "Travels",
-  "start_url": "family-travel-integrated.html",
+  "start_url": "index.html",
   "display": "standalone",
   "background_color": "#fafaf8",
   "theme_color": "#0d1b2a",
