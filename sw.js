@@ -2,7 +2,7 @@ const CACHE_NAME = 'family-travel-v1';
 
 // Files to cache for offline use
 const urlsToCache = [
-  'family-travel-integrated.html',
+  'index.html',
   'manifest.json',
   'https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap'
 ];
@@ -51,6 +51,6 @@ self.addEventListener('fetch', event => {
         }
         return response;
       });
-    }).catch(() => caches.match('family-travel-integrated.html'))
+    }).catch(() => caches.match('index.html'))
   );
 });
