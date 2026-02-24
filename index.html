@@ -203,6 +203,11 @@
     .cost-item .dv{color:white;font-size:1rem;}
 
     .footer{text-align:center;padding:16px 26px 26px;font-size:0.72rem;color:var(--mist-lt);}
+    .refresh-wrap{padding:0 24px;max-width:1100px;margin:0 auto 4px;}
+    .refresh-btn{width:100%;padding:13px;border-radius:12px;border:1.5px solid #e2e8f0;background:white;font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:600;color:var(--mist);cursor:pointer;transition:all 0.2s;letter-spacing:0.3px;}
+    .refresh-btn:hover{background:var(--ink);color:white;border-color:var(--ink);}
+    .refresh-btn:active{transform:scale(0.98);}
+    @media(max-width:768px){.refresh-wrap{padding:0 12px;}}
     .icon-legend{border-top:1px solid #e2e8f0;padding:20px 24px;max-width:1100px;margin:0 auto;}
     .legend-title{font-family:'DM Mono',monospace;font-size:var(--text-xs);letter-spacing:2px;text-transform:uppercase;color:var(--mist-lt);margin-bottom:12px;}
     .legend-items{display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;}
@@ -285,7 +290,10 @@
 
 <div id="homeView" class="view active"><div id="homeContent"></div></div>
 <div id="detailView" class="view"><div id="detailContent"></div></div>
-<div class="icon-legend">
+<div class="refresh-wrap">
+      <button class="refresh-btn" onclick="loadData()">↺ Refresh Data</button>
+    </div>
+    <div class="icon-legend">
       <div class="legend-title">Legend</div>
       <div class="legend-items">
         <div class="legend-item">✈ <span>Flights</span></div>
