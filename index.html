@@ -76,7 +76,7 @@
     @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(110,231,183,0.7);}70%{box-shadow:0 0 0 15px rgba(110,231,183,0);}100%{box-shadow:0 0 0 0 rgba(110,231,183,0);}}
 
     /* Banner stats row inside map */
-    .banner-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:16px;}
+    .banner-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px;}
     .bstat{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:8px 6px;text-align:center;}
     .bstat-num{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:white;line-height:1;}
     .bstat-label{font-size:var(--text-xs);letter-spacing:1.5px;text-transform:uppercase;font-family:'DM Mono',monospace;color:rgba(255,255,255,0.45);margin-top:3px;}
@@ -100,6 +100,8 @@
     .progress-fill{height:100%;background:linear-gradient(90deg,#005A9C,#6ee7b7);border-radius:5px;transition:width 1s ease;}
 
     @media(max-width:768px){
+      .trips-wrap{padding:0 12px 40px;}
+      .back-btn-wrap{padding:16px 12px 32px;}
       .dashboard-header{grid-template-columns:1fr;padding:16px;}
       .map-card{min-height:160px;}
     }
@@ -219,6 +221,11 @@
     .cost-item .dv{color:white;font-size:1rem;}
 
     .footer{text-align:center;padding:26px;font-size:0.72rem;color:var(--mist-lt);border-top:1px solid #e2e8f0;}
+    .back-btn-wrap{padding:20px 24px 40px;max-width:900px;margin:0 auto;}
+    .back-btn-bottom{width:100%;padding:14px;border-radius:12px;border:2px solid var(--cloud);background:white;font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:600;color:var(--ink-soft);cursor:pointer;transition:all 0.2s;}
+    .back-btn-bottom:hover{background:var(--ink);color:white;border-color:var(--ink);}
+    .trips-wrap{padding:0 24px 40px;}
+    .filter-bar{display:none;}
     .reminder-pill{background:rgba(251,191,36,0.2)!important;border-color:rgba(251,191,36,0.5)!important;color:#fbbf24!important;font-weight:600;}
     .map-story-next{color:#fff;font-size:1.1rem;font-weight:700;font-family:'Playfair Display',serif;margin-top:8px;position:relative;z-index:2;}
     .stub-value{font-size:var(--text-sm);color:var(--mist);font-weight:600;}
@@ -488,7 +495,6 @@ function buildBanner(trips, upcoming, countries, nights) {
           <div class="bstat"><div class="bstat-num">${trips.length}</div><div class="bstat-label">Trips</div></div>
           <div class="bstat"><div class="bstat-num">${upcoming}</div><div class="bstat-label">Upcoming</div></div>
           <div class="bstat"><div class="bstat-num">${countries}</div><div class="bstat-label">Countries</div></div>
-          <div class="bstat"><div class="bstat-num">${nights}</div><div class="bstat-label">Nights</div></div>
         </div>
       </div>
       <div class="banner-sidebar">
@@ -506,26 +512,31 @@ function renderHome(filter) {
   if (filter !== undefined) currentFilter = filter;
   const trips    = DB.trips    || [];
   const homepage = DB.homepage || [];
-  const filtered = currentFilter === 'all' ? trips : trips.filter(t => t[C.STATUS] === currentFilter);
   const countries= [...new Set(trips.map(t => t[C.COUNTRY]).filter(Boolean))].length;
   const nights   = trips.reduce((s, t) => s + (parseInt(t[C.NIGHTS]) || 0), 0);
   const upcoming = trips.filter(t => t[C.STATUS] === 'Upcoming').length;
+
+  // Sort all trips by start date ascending (soonest first)
+  const sorted = [...trips].sort((a, b) => new Date(a[C.START]) - new Date(b[C.START]));
+
+  // Build sections in order: Ongoing → Upcoming → Completed → Cancelled
+  const sections = ['Ongoing','Upcoming','Completed','Cancelled'];
+  const sectionsHTML = sections.map(status => {
+    const group = sorted.filter(t => t[C.STATUS] === status);
+    if (!group.length) return ''; // hide empty sections
+    return `
+      <div class="trips-section">
+        <div class="trips-section-title">${status} — ${group.length} trip${group.length!==1?'s':''}</div>
+        <div class="trips-grid">${group.map(t => buildTripCard(t, homepage)).join('')}</div>
+      </div>`;
+  }).join('');
 
   document.getElementById('homeContent').innerHTML = `
     <div class="home-hero">
       ${buildBanner(trips, upcoming, countries, nights)}
     </div>
-    <div class="filter-bar">
-      ${['all','Upcoming','Ongoing','Completed','Cancelled'].map(f =>
-        `<button class="filter-btn ${currentFilter===f?'active':''}" onclick="renderHome('${f}')">${f==='all'?'All':f}</button>`
-      ).join('')}
-    </div>
-    <div class="trips-section">
-      <div class="trips-section-title">${currentFilter==='all'?'All Trips':currentFilter+' Trips'} — ${filtered.length} found</div>
-      <div class="trips-grid">${filtered.length
-        ? filtered.map(t => buildTripCard(t, homepage)).join('')
-        : '<div class="no-trips">No trips found.</div>'}
-      </div>
+    <div class="trips-wrap">
+      ${sectionsHTML || '<div class="no-trips" style="padding:40px;text-align:center;color:var(--mist)">No trips yet.</div>'}
     </div>`;
 }
 
@@ -622,7 +633,6 @@ function buildDetailHTML(tripId) {
   return `
     <div class="detail-hero">
       <div class="detail-hero-dest">${trip[C.DEST]||trip[C.TRIP_NAME]} ${cfg[C.EMOJI]||'✈️'}</div>
-      <div class="detail-hero-sub">Family Travel Itinerary</div>
       <div class="detail-hero-meta">
         <div class="hero-pill">📅 ${formatDate(trip[C.START])} – ${formatDate(trip[C.END])}</div>
         <div class="hero-pill">👨‍👩‍👦 ${trip[C.TRAVELERS]}</div>
@@ -645,15 +655,8 @@ function buildDetailHTML(tripId) {
       ${hts.length  ?`<div class="section-label">🏨 Hotel</div>${hts.map(buildHotelTicket).join('')}`:''}
       ${sts.length  ?`<div class="section-label">🏡 Holiday Rental</div>${sts.map(buildStayTicket).join('')}`:''}
       ${cars.length ?`<div class="section-label">🚗 Car Rental</div>${cars.map(buildCarTicket).join('')}`:''}
-      <div class="cost-summary">
-        <div><div class="cost-title">Trip Summary</div><div class="cost-subtitle">${tripId} · ${trip[C.TRAVELERS]}</div></div>
-        <div class="cost-items">
-          ${flCost?`<div class="cost-item"><span class="dl">Flights</span><span class="dv">${flCost}</span></div>`:''}
-          ${htCost?`<div class="cost-item"><span class="dl">Hotel</span><span class="dv">${htCost}</span></div>`:''}
-          ${stCost?`<div class="cost-item"><span class="dl">Airbnb</span><span class="dv">${stCost}</span></div>`:''}
-          ${crCost?`<div class="cost-item"><span class="dl">Car Rental</span><span class="dv">${crCost}</span></div>`:''}
-          <div class="cost-item"><span class="dl">Duration</span><span class="dv">${trip[C.NIGHTS]} Nights</span></div>
-        </div>
+      <div class="back-btn-wrap">
+        <button class="back-btn-bottom" onclick="showHome()">← All Trips</button>
       </div>
     </div>`;
 }
