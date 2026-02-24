@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Family Travel Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink:#0d1b2a;--ink-soft:#1e3448;--mist:#64748b;--mist-lt:#94a3b8;
+      --cloud:#f1f5f9;--sand:#fafaf8;--white:#ffffff;
+      --sky:#0f4c81;--sky-lt:#1a6db5;--sky-pale:#e8f2fc;
+      --amber:#c47d17;--amber-lt:#f59e0b;--amber-pale:#fef3c7;
+      --rose:#be2f2f;--rose-pale:#fef2f2;
+      --green:#166534;--green-pale:#dcfce7;
+      --purple:#6d28d9;--purple-pale:#ede9fe;
+      --map-gold:#fde68a;--map-teal:#6ee7b7;
+      /* Font scale */
+      --text-xs:0.62rem;--text-sm:0.75rem;--text-base:0.85rem;--text-md:0.95rem;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'DM Sans',sans-serif;background:var(--sand);color:var(--ink);min-height:100vh;}
+
+    /* NAV */
+    .nav{background:var(--ink);padding:0 30px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100;}
+    .nav-logo{font-family:'Playfair Display',serif;font-size:1.15rem;color:white;cursor:pointer;display:flex;align-items:center;gap:8px;}
+    .nav-logo span{opacity:0.4;font-size:0.9rem;}
+    .nav-back{display:none;align-items:center;gap:6px;color:rgba(255,255,255,0.65);font-size:0.82rem;font-weight:500;cursor:pointer;background:none;border:none;transition:color 0.2s;}
+    .nav-back:hover{color:white;}
+    .nav-back svg{width:14px;height:14px;}
+
+    /* VIEWS */
+    .view{display:none;animation:fadeUp 0.35s ease both;}
+    .view.active{display:block;}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+
+    /* LOADING */
+    .loading-screen{min-height:calc(100vh - 56px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:var(--mist);}
+    .spinner{width:40px;height:40px;border:3px solid var(--cloud);border-top-color:var(--sky);border-radius:50%;animation:spin 0.8s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .loading-text{font-size:0.85rem;letter-spacing:1px;}
+
+    /* ERROR */
+    .error-screen{min-height:calc(100vh - 56px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:40px;text-align:center;}
+    .error-icon{font-size:3rem;}
+    .error-title{font-family:'Playfair Display',serif;font-size:1.4rem;}
+    .error-msg{font-size:0.85rem;color:var(--mist);max-width:480px;line-height:1.7;}
+    .error-steps{background:var(--cloud);border-radius:12px;padding:20px 24px;text-align:left;max-width:500px;width:100%;}
+    .error-steps p{font-size:0.75rem;font-weight:700;color:var(--mist);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;}
+    .error-steps ol{padding-left:18px;}
+    .error-steps li{font-size:0.82rem;color:var(--ink-soft);margin-bottom:8px;line-height:1.6;}
+    .error-steps code{background:white;padding:1px 6px;border-radius:4px;font-family:'DM Mono',monospace;font-size:0.78rem;color:var(--sky);}
+    .retry-btn{background:var(--sky);color:white;border:none;padding:10px 28px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;transition:background 0.2s;}
+    .retry-btn:hover{background:var(--sky-lt);}
+
+    /* HOME HERO */
+    /* ── BANNER ── */
+    .home-hero{background:var(--ink);padding:0;position:relative;overflow:hidden;}
+    .home-hero-title{display:none;}
+    .home-hero-sub{display:none;}
+    .home-stats{display:none;}
+
+    .dashboard-header{display:grid;grid-template-columns:2fr 1fr;gap:20px;width:100%;max-width:1148px;margin:0 auto;padding:20px 24px;box-sizing:border-box;}
+
+    /* Map card */
+    .map-card{background:#102a43;border-radius:16px;padding:20px;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;min-height:200px;box-shadow:0 10px 20px rgba(0,0,0,0.1);}
+    .map-title{color:var(--mist);text-transform:uppercase;font-size:var(--text-xs);letter-spacing:1.5px;z-index:2;font-family:'DM Mono',monospace;}
+    .map-story{color:rgba(255,255,255,0.85);font-size:var(--text-md);font-weight:500;z-index:2;margin-top:5px;position:relative;}
+    .highlight-past{color:var(--map-gold);}
+    .highlight-future{color:var(--map-teal);}
+    .map-bg{position:absolute;top:0;left:0;right:0;bottom:0;background-image:radial-gradient(#243b53 2px,transparent 2px);background-size:16px 16px;opacity:0.4;}
+    .pin{position:absolute;width:12px;height:12px;border-radius:50%;transform:translate(-50%,-50%);}
+    .pin-past{bottom:20%;right:25%;background-color:var(--map-gold);box-shadow:0 0 15px 3px rgba(253,230,138,0.4);}
+    .pin-next{top:40%;right:30%;background-color:var(--map-teal);box-shadow:0 0 15px 3px rgba(110,231,183,0.6);animation:pulse 2s infinite;}
+    .flight-path{position:absolute;bottom:20%;right:25%;width:25%;height:60%;border-right:2px dashed rgba(255,255,255,0.2);border-top:2px dashed rgba(255,255,255,0.2);border-top-right-radius:100%;transform-origin:bottom right;}
+    @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(110,231,183,0.7);}70%{box-shadow:0 0 0 15px rgba(110,231,183,0);}100%{box-shadow:0 0 0 0 rgba(110,231,183,0);}}
+
+    /* Banner stats row inside map */
+    .banner-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px;}
+    .bstat{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:8px 6px;text-align:center;}
+    .bstat-num{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:white;line-height:1;}
+    .bstat-label{font-size:var(--text-xs);letter-spacing:1.5px;text-transform:uppercase;font-family:'DM Mono',monospace;color:rgba(255,255,255,0.45);margin-top:3px;}
+
+    /* Sidebar */
+    .banner-sidebar{display:flex;flex-direction:column;gap:20px;}
+
+    /* Countdown */
+    .countdown-card{background:#fff;border-radius:16px;padding:20px;box-shadow:0 10px 20px rgba(0,0,0,0.05);text-align:center;}
+    .countdown-label{color:var(--mist);font-size:var(--text-xs);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;font-family:'DM Mono',monospace;}
+    .timer{display:flex;justify-content:center;gap:10px;align-items:center;}
+    .time-box{display:flex;flex-direction:column;align-items:center;}
+    .time-sep{font-size:1.4rem;font-weight:700;color:var(--mist-lt);line-height:1;padding-bottom:12px;}
+    .time-val{font-size:1.6rem;font-weight:700;color:var(--ink);line-height:1;font-family:'Playfair Display',serif;}
+    .time-unit{font-size:0.62rem;color:var(--mist-lt);text-transform:uppercase;letter-spacing:1.5px;margin-top:2px;font-family:'DM Mono',monospace;}
+
+    /* Tracker */
+    .tracker-card{background:#fff;border-radius:16px;padding:20px;box-shadow:0 10px 20px rgba(0,0,0,0.05);flex-grow:1;display:flex;flex-direction:column;justify-content:center;}
+    .tracker-text{font-size:var(--text-base);color:var(--ink-soft);margin-bottom:10px;font-weight:500;line-height:1.5;}
+    .progress-bar-bg{width:100%;height:10px;background:#f0f4f8;border-radius:5px;overflow:hidden;}
+    .progress-fill{height:100%;background:linear-gradient(90deg,#005A9C,#6ee7b7);border-radius:5px;transition:width 1s ease;}
+
+    @media(max-width:768px){
+      .trips-wrap{padding:0 12px 40px;}
+      .back-btn-wrap{padding:16px 12px 32px;}
+      .dashboard-header{grid-template-columns:1fr;padding:16px;}
+      .map-card{min-height:160px;}
+    }
+    /* FILTER */
+    .filter-bar{background:var(--white);border-bottom:1px solid #e2e8f0;padding:0 30px;display:flex;align-items:center;gap:6px;overflow-x:auto;scrollbar-width:none;height:50px;}
+    .filter-btn{padding:5px 16px;border-radius:20px;border:1.5px solid #e2e8f0;background:transparent;font-family:'DM Sans',sans-serif;font-size:0.78rem;font-weight:600;color:var(--mist);cursor:pointer;white-space:nowrap;transition:all 0.18s;}
+    .filter-btn:hover{border-color:var(--sky);color:var(--sky);}
+    .filter-btn.active{background:var(--ink);color:white;border-color:var(--ink);}
+
+    /* TRIPS GRID */
+    .trips-section{max-width:1100px;margin:0 auto;padding:36px 24px 60px;}
+    .trips-section-title{font-family:'DM Mono',monospace;font-size:0.68rem;letter-spacing:3px;text-transform:uppercase;color:var(--mist-lt);margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid #e2e8f0;}
+    .trips-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px;}
+    .no-trips{text-align:center;padding:60px;color:var(--mist);}
+
+    /* TRIP CARD */
+    .trip-card{background:var(--white);border-radius:18px;overflow:hidden;box-shadow:0 2px 8px rgba(13,27,42,0.06);cursor:pointer;transition:transform 0.22s,box-shadow 0.22s;}
+    .trip-card:hover{transform:translateY(-5px);box-shadow:0 16px 40px rgba(13,27,42,0.13);}
+    .trip-card-img{height:160px;position:relative;overflow:hidden;}
+    .trip-card-img-bg{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:5rem;transition:transform 0.4s;}
+    .trip-card:hover .trip-card-img-bg{transform:scale(1.08);}
+    .trip-card-img-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(13,27,42,0.6) 100%);}
+    .trip-card-status{position:absolute;top:14px;right:14px;font-size:0.68rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:4px 10px;border-radius:20px;}
+    .status-Upcoming{background:#dbeafe;color:#1d4ed8;}
+    .status-Ongoing{background:#ccfbf1;color:#0f766e;}
+    .status-Completed{background:#f1f5f9;color:#64748b;}
+    .status-Cancelled{background:#fee2e2;color:#be2f2f;}
+    .trip-card-dest{position:absolute;bottom:14px;left:16px;color:white;font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;line-height:1.1;text-shadow:0 1px 6px rgba(0,0,0,0.4);}
+    .trip-card-dest small{display:block;font-family:'DM Sans',sans-serif;font-size:0.72rem;font-weight:400;opacity:0.85;margin-top:1px;}
+    .trip-card-body{padding:18px 18px 14px;}
+    .trip-card-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+    .trip-card-dates{font-size:0.8rem;color:var(--mist);font-weight:500;}
+    .trip-card-travelers{font-size:0.75rem;background:var(--cloud);padding:3px 10px;border-radius:20px;color:var(--mist);font-weight:600;}
+    .checklist{display:flex;flex-wrap:wrap;gap:7px;margin-top:6px;}
+    .check-pill{display:flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;font-size:0.72rem;font-weight:600;}
+    .check-pill.done{background:var(--green-pale);color:var(--green);}
+    .check-pill.missing{background:#fff7ed;color:#9a3412;}
+    .check-pill.na{background:var(--cloud);color:var(--mist-lt);text-decoration:line-through;opacity:0.6;}
+    .check-pill svg{width:11px;height:11px;flex-shrink:0;}
+    .trip-card-notes{font-size:0.75rem;color:var(--mist);margin-top:10px;font-style:italic;}
+    .trip-card-footer{margin-top:14px;padding-top:12px;border-top:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;}
+    .trip-card-id{font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--mist-lt);}
+    .trip-card-cta{font-size:0.75rem;color:var(--sky-lt);font-weight:600;}
+
+    /* DETAIL HERO */
+    .detail-hero{background:linear-gradient(135deg,#0f2942 0%,#0f4c81 50%,#1a7db0 100%);color:white;padding:48px 30px 64px;text-align:center;position:relative;overflow:hidden;}
+    .detail-hero::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");}
+    .detail-hero-dest{font-family:'Playfair Display',serif;font-size:clamp(2.2rem,6vw,4.2rem);font-weight:800;letter-spacing:-1px;line-height:1;margin-bottom:10px;position:relative;}
+    .detail-hero-sub{font-size:0.88rem;opacity:0.65;letter-spacing:3px;text-transform:uppercase;margin-bottom:28px;position:relative;}
+    .detail-hero-meta{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;position:relative;}
+    .hero-pill{background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);border-radius:30px;padding:7px 18px;font-size:0.82rem;backdrop-filter:blur(4px);display:flex;align-items:center;gap:7px;}
+
+    /* TIMELINE */
+    .timeline-wrap{background:var(--ink-soft);color:white;padding:18px 30px;display:flex;align-items:center;justify-content:center;overflow-x:auto;scrollbar-width:none;flex-wrap:wrap;gap:6px;}
+    .tl-item{display:flex;flex-direction:column;align-items:center;min-width:80px;}
+    .tl-connector{width:40px;height:1px;background:rgba(255,255,255,0.15);flex-shrink:0;}
+    .tl-dot{width:10px;height:10px;border-radius:50%;margin-bottom:5px;}
+    .tl-dot.flight{background:#60a5fa;}.tl-dot.hotel{background:#f59e0b;}.tl-dot.stay{background:#f87171;}.tl-dot.car{background:#a78bfa;}
+    .tl-date{font-size:0.66rem;opacity:0.55;font-family:'DM Mono',monospace;}
+    .tl-label{font-size:0.7rem;font-weight:600;margin-top:2px;text-align:center;}
+
+    /* LEGEND */
+    .legend{display:flex;justify-content:center;gap:20px;padding:14px;background:var(--cloud);border-bottom:1px solid #e2e8f0;flex-wrap:wrap;}
+    .legend-item{display:flex;align-items:center;gap:6px;font-size:0.78rem;color:var(--mist);}
+    .legend-dot{width:8px;height:8px;border-radius:50%;}
+
+    /* DETAIL MAIN */
+    .detail-main{max-width:780px;margin:0 auto;padding:36px 20px 60px;}
+    .section-label{font-family:'DM Mono',monospace;font-size:0.68rem;letter-spacing:3px;text-transform:uppercase;color:var(--mist-lt);margin-bottom:18px;margin-top:36px;padding-bottom:8px;border-bottom:1px solid #e2e8f0;}
+    .section-label:first-child{margin-top:0;}
+
+    /* TICKET */
+    .ticket{display:flex;background:var(--white);border-radius:16px;margin-bottom:20px;box-shadow:0 2px 8px rgba(15,27,45,0.06);position:relative;transition:transform 0.2s,box-shadow 0.2s;}
+    .ticket:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(15,27,45,0.12);}
+    .ticket::before{content:'';position:absolute;width:26px;height:26px;background:var(--sand);border-radius:50%;top:50%;transform:translateY(-50%);right:calc(28% - 13px);z-index:2;}
+    .ticket-main{flex:1;padding:26px;border-radius:16px 0 0 16px;}
+    .ticket-stub{width:28%;padding:22px 18px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;border-left:2px dashed #e2e8f0;border-radius:0 16px 16px 0;gap:14px;}
+    .ticket-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+    .brand-name{font-size:0.72rem;font-weight:600;letter-spacing:2px;text-transform:uppercase;}
+    .type-badge{font-size:0.7rem;font-weight:600;padding:3px 11px;border-radius:20px;}
+
+    .flight .brand-name{color:var(--sky);}.flight .type-badge{background:var(--sky-pale);color:var(--sky);}.flight .ticket-stub{background:linear-gradient(160deg,var(--sky-pale),#dbeafe);}
+    .hotel .brand-name{color:var(--amber);}.hotel .type-badge{background:var(--amber-pale);color:var(--amber);}.hotel .ticket-stub{background:linear-gradient(160deg,var(--amber-pale),#fde68a44);}
+    .stay .brand-name{color:var(--rose);}.stay .type-badge{background:var(--rose-pale);color:var(--rose);}.stay .ticket-stub{background:linear-gradient(160deg,var(--rose-pale),#fecaca44);}
+    .car .brand-name{color:var(--purple);}.car .type-badge{background:var(--purple-pale);color:var(--purple);}.car .ticket-stub{background:linear-gradient(160deg,#ede9fe,#ddd6fe44);}
+
+    .flight-route{display:flex;align-items:center;gap:14px;margin-bottom:22px;}
+    .airport-code{font-family:'Playfair Display',serif;font-size:2.6rem;font-weight:700;color:var(--ink);line-height:1;letter-spacing:-1px;}
+    .airport-name{font-size:0.73rem;color:var(--mist);margin-top:3px;}
+    .flight-divider{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;}
+    .flight-line{width:100%;height:1px;background:linear-gradient(90deg,var(--sky-pale),var(--sky),var(--sky-pale));}
+    .flight-plane{font-size:1rem;color:var(--sky);}
+    .flight-dur{font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--mist);}
+
+    .prop-title{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;color:var(--ink);margin-bottom:4px;line-height:1.2;}
+    .prop-address{font-size:0.8rem;color:var(--mist);margin-bottom:20px;}
+    .stay-range{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px;}
+    .stay-date-block{padding:10px 13px;border-radius:10px;background:var(--cloud);}
+    .stay-arrow{display:none;}
+
+    .detail-row{display:flex;gap:18px;flex-wrap:wrap;}
+    .detail-block{display:flex;flex-direction:column;gap:3px;min-width:70px;}
+    .dl{font-size:var(--text-xs);letter-spacing:1.5px;text-transform:uppercase;color:var(--mist);font-weight:500;}
+    .dv{font-size:0.85rem;font-weight:600;color:var(--ink);}
+
+    .stub-ref{font-family:'DM Mono',monospace;font-weight:500;letter-spacing:1px;font-size:1.05rem;}
+    .stub-label{font-size:var(--text-xs);letter-spacing:2px;text-transform:uppercase;color:var(--mist);}
+    .barcode{width:70%;height:34px;background:repeating-linear-gradient(90deg,#1e293b 0,#1e293b 2px,transparent 2px,transparent 4px,#1e293b 4px,#1e293b 6px,transparent 6px,transparent 10px,#1e293b 10px,#1e293b 11px,transparent 11px,transparent 14px);opacity:0.14;border-radius:2px;}
+
+    /* COST SUMMARY */
+    .cost-summary{background:var(--ink);color:white;border-radius:16px;padding:26px;margin-top:36px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:20px;}
+    .cost-title{font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:3px;}
+    .cost-subtitle{font-size:0.75rem;opacity:0.45;}
+    .cost-items{display:flex;gap:26px;flex-wrap:wrap;}
+    .cost-item{display:flex;flex-direction:column;gap:3px;}
+    .cost-item .dl{color:rgba(255,255,255,0.4);}
+    .cost-item .dv{color:white;font-size:1rem;}
+
+    .footer{text-align:center;padding:26px;font-size:0.72rem;color:var(--mist-lt);border-top:1px solid #e2e8f0;}
+    .back-btn-wrap{padding:20px 24px 40px;max-width:900px;margin:0 auto;}
+    .back-btn-bottom{width:100%;padding:14px;border-radius:12px;border:2px solid var(--cloud);background:white;font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:600;color:var(--ink-soft);cursor:pointer;transition:all 0.2s;}
+    .back-btn-bottom:hover{background:var(--ink);color:white;border-color:var(--ink);}
+    .trips-wrap{padding:0 24px 40px;}
+    .filter-bar{display:none;}
+    .reminder-pill{background:rgba(251,191,36,0.2)!important;border-color:rgba(251,191,36,0.5)!important;color:#fbbf24!important;font-weight:600;}
+    .map-story-next{color:#fff;font-size:1.1rem;font-weight:700;font-family:'Playfair Display',serif;margin-top:8px;position:relative;z-index:2;}
+    .stub-value{font-size:var(--text-sm);color:var(--mist);font-weight:600;}
+    .time-sublabel{font-size:var(--text-sm);color:var(--mist);margin-top:3px;font-family:'DM Sans',sans-serif;}
+    .tracker-sub{color:var(--mist-lt);font-size:var(--text-sm);}
+
+    @media(max-width:768px){
+      /* Stats */
+      .home-stats{grid-template-columns:repeat(2,1fr);}
+      /* Grid */
+      .trips-grid{grid-template-columns:1fr;}
+      /* Filter */
+      .filter-bar{padding:0 16px;}
+      /* Trips section */
+      .trips-section{padding:24px 16px 40px;}
+      /* Detail hero */
+      .detail-hero{padding:28px 16px 36px;}
+      .detail-hero-dest{font-size:clamp(1.8rem,8vw,3rem);}
+      .detail-hero-meta{gap:8px;}
+      .hero-pill{font-size:0.75rem;padding:6px 12px;}
+      /* Timeline */
+      .timeline-wrap{padding:14px 12px;gap:4px;}
+      .tl-item{min-width:60px;}
+      .tl-connector{width:20px;}
+      .tl-label{font-size:0.62rem;}
+      /* Detail main */
+      .detail-main{padding:24px 14px 40px;}
+      .section-label{margin-top:24px;}
+      /* Tickets */
+      .ticket{flex-direction:column;}
+      .ticket-stub{width:100%;border-left:none;border-top:2px dashed #e2e8f0;border-radius:0 0 16px 16px;flex-direction:row;justify-content:space-around;padding:16px;}
+      .ticket::before{display:none;}
+      .ticket-main{padding:18px;}
+      .airport-code{font-size:2rem;}
+      .prop-title{font-size:1.2rem;}
+
+      .detail-row{gap:12px;}
+      /* Cost summary */
+      .cost-summary{flex-direction:column;gap:16px;}
+      .cost-items{gap:16px;}
+      /* Nav */
+      .nav{padding:0 16px;}
+    }
+    @media(max-width:400px){
+      .home-stats{grid-template-columns:repeat(2,1fr);}
+      .home-stat-num{font-size:1.3rem;}
+    }
+  </style>
+  <link rel="manifest" href="manifest.json">
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(registration => console.log('Service Worker registered!'))
+          .catch(err => console.log('Service Worker failed', err));
+      });
+    }
+  </script>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-logo" onclick="showHome()">✈ <span>Family</span> Travels</div>
+  <button class="nav-back" id="navBack" onclick="showHome()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    All Trips
+  </button>
+</nav>
+
+<div id="homeView" class="view active"><div id="homeContent"></div></div>
+<div id="detailView" class="view"><div id="detailContent"></div></div>
+<div class="footer">Family Travel Dashboard · Powered by Google Sheets + Apps Script</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  ▶  STEP 1 — Paste your Apps Script Web App URL here
+// ══════════════════════════════════════════════════════════════
+const API_URL = 'https://script.google.com/macros/s/AKfycbynQgNkiX0a1UPiKSfDFoY213514GAOjWX6L38GXTuAeVBfaRWgODohGsMFuiCWUc1n/exec';
+
+// ══════════════════════════════════════════════════════════════
+//  Column header constants — must match your Google Sheet headers
+// ══════════════════════════════════════════════════════════════
+const C = {
+  TRIP_ID:'Trip ID', TRIP_NAME:'Trip Name', DEST:'Destination',
+  COUNTRY:'Country', START:'Start Date', END:'End Date',
+  NIGHTS:'Nights', TRAVELERS:'Travelers', STATUS:'Status', NOTES:'Notes',
+  EMOJI:'Emoji', GRAD_S:'Gradient Start', GRAD_E:'Gradient End',
+  CHK_FL:'Flights', CHK_HT:'Hotel', CHK_VI:'Visa',
+  CHK_CR:'Car Rental', CHK_AB:'Airbnb',
+  FL_AIRLINE:'Airline', FL_NUM:'Flight Number',
+  FL_DEP_AP:'Departure Airport', FL_DEP_CITY:'Departure City',
+  FL_ARR_AP:'Arrival Airport',  FL_ARR_CITY:'Arrival City',
+  FL_DEP_D:'Departure Date', FL_DEP_T:'Departure Time',
+  FL_ARR_D:'Arrival Date',   FL_ARR_T:'Arrival Time',
+  FL_CLASS:'Cabin Class', FL_BAG:'Baggage Allowance',
+  FL_REF:'Booking Reference', FL_PRICE:'Price Paid', FL_CCY:'Currency',
+  FL_PLAT:'Booking Platform',
+  HT_NAME:'Hotel Name', HT_ADDR:'Address', HT_CITY:'City',
+  HT_CI:'Check-in Date', HT_CO:'Check-out Date', HT_NIGHTS:'Nights',
+  HT_ROOM:'Room Type', HT_GUESTS:'Guests', HT_CANCEL:'Free Cancellation Until',
+  HT_PLAT:'Booking Platform', HT_PRICE:'Price Paid', HT_CCY:'Currency',
+  HT_REF:'Booking Reference',
+  ST_NAME:'Property Name', ST_ADDR:'Address', ST_CITY:'City',
+  ST_CI:'Check-in Date', ST_CIT:'Check-in Time',
+  ST_CO:'Check-out Date', ST_COT:'Check-out Time',
+  ST_NIGHTS:'Nights', ST_GUESTS:'Guests', ST_HOST:'Host Name',
+  ST_ACCESS:'Access Instructions', ST_PLAT:'Booking Platform',
+  ST_PRICE:'Price Paid', ST_CCY:'Currency', ST_REF:'Booking Reference',
+  CR_CO:'Rental Company', CR_VEH:'Vehicle', CR_TRANS:'Transmission',
+  CR_PUL:'Pickup Location', CR_PUD:'Pickup Date', CR_PUT:'Pickup Time',
+  CR_REL:'Return Location', CR_RED:'Return Date', CR_RET:'Return Time',
+  CR_PROT:'Protection Package', CR_ADD:'Add-ons', CR_KM:'Unlimited KM',
+  CR_PRICE:'Total Price', CR_CCY:'Currency', CR_REF:'Booking Reference',
+};
+
+let DB = null;
+let currentFilter = 'all';
+
+// ══════════════════════════════════════════════════════════════
+//  DATA FETCH
+// ══════════════════════════════════════════════════════════════
+function loadData() {
+  showLoading();
+
+  const old = document.getElementById('_travelScript');
+  if (old) old.remove();
+
+  const timer = setTimeout(() => {
+    showError('Request timed out. Make sure Apps Script access is set to "Anyone" (not "Anyone with a Google account").');
+  }, 12000);
+
+  window.__travelCB = function(json) {
+    clearTimeout(timer);
+    try {
+      if (!json.ok) throw new Error(json.error);
+      DB = json.data;
+      renderHome();
+    } catch (err) {
+      showError(err.message);
+    }
+  };
+
+  const s = document.createElement('script');
+  s.id  = '_travelScript';
+  s.src = API_URL + '?tab=all&callback=__travelCB';
+  s.onerror = () => {
+    clearTimeout(timer);
+    showError('Could not reach the Apps Script URL. Verify the deployment access is set to "Anyone".');
+  };
+  document.head.appendChild(s);
+}
+
+function showLoading() {
+  document.getElementById('homeContent').innerHTML = `
+    <div class="loading-screen">
+      <div class="spinner"></div>
+      <div class="loading-text">Loading your trips from Google Sheets…</div>
+    </div>`;
+}
+
+function showError(msg) {
+  const isNotConfigured = API_URL.includes('YOUR_APPS_SCRIPT');
+  document.getElementById('homeContent').innerHTML = `
+    <div class="error-screen">
+      <div class="error-icon">🗺️</div>
+      <div class="error-title">${isNotConfigured ? 'Apps Script not connected yet' : 'Couldn\'t load trip data'}</div>
+      <div class="error-msg">${isNotConfigured
+        ? 'Follow the steps below to connect your Google Sheet securely.'
+        : 'Error: ' + (msg || 'Unable to reach the API.')}</div>
+      <div class="error-steps">
+        <p>Setup Steps</p>
+        <ol>
+          <li>Open your Google Sheet → <code>Extensions → Apps Script</code></li>
+          <li>Delete any existing code and paste in the contents of <code>AppsScript_Code.js</code></li>
+          <li>Click <code>Save</code>, then <code>Deploy → New Deployment</code></li>
+          <li>Type: <code>Web App</code> · Execute as: <code>Me</code> · Access: <code>Anyone</code></li>
+          <li>Click <code>Deploy</code> and copy the Web App URL</li>
+          <li>In this HTML file, replace <code>YOUR_APPS_SCRIPT_WEB_APP_URL_HERE</code> with that URL</li>
+          <li>Save and reload this file</li>
+        </ol>
+      </div>
+      <button class="retry-btn" onclick="loadData()">↺ Retry</button>
+    </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ROUTING
+// ══════════════════════════════════════════════════════════════
+function showHome() {
+  document.getElementById('homeView').classList.add('active');
+  document.getElementById('detailView').classList.remove('active');
+  document.getElementById('navBack').style.display = 'none';
+  window.scrollTo(0, 0);
+}
+
+function showDetail(tripId) {
+  document.getElementById('homeView').classList.remove('active');
+  document.getElementById('detailView').classList.add('active');
+  document.getElementById('navBack').style.display = 'flex';
+  document.getElementById('detailContent').innerHTML = buildDetailHTML(tripId);
+  window.scrollTo(0, 0);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  HOME
+// ══════════════════════════════════════════════════════════════
+function buildBanner(trips, upcoming, countries, nights) {
+  // Sort completed by End Date descending → most recent last trip
+  const completed    = trips
+    .filter(t => t['Status'] === 'Completed')
+    .sort((a, b) => new Date(b['End Date']) - new Date(a['End Date']));
+  // Sort upcoming by Start Date ascending → soonest next trip
+  const upcomingList = trips
+    .filter(t => t['Status'] === 'Upcoming' || t['Status'] === 'Ongoing')
+    .sort((a, b) => new Date(a['Start Date']) - new Date(b['Start Date']));
+  const lastTrip     = completed[0];   // most recently completed
+  const nextTrip     = upcomingList[0]; // soonest upcoming
+  const lastDest     = lastTrip ? (lastTrip['Destination'] || lastTrip['Trip Name']) : null;
+  const nextDest     = nextTrip ? (nextTrip['Destination'] || nextTrip['Trip Name']) : null;
+  const nextDate     = nextTrip ? nextTrip['Start Date'] : null;
+
+  // Countdown
+  let countdownHTML = '';
+  if (nextDate) {
+    const diff = new Date(nextDate) - new Date();
+    if (diff > 0) {
+      const d = Math.floor(diff / 86400000);
+      const h = Math.floor((diff % 86400000) / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      countdownHTML = `
+        <div class="countdown-card">
+          <div class="countdown-label">Wheels Up In</div>
+          <div class="timer">
+            <div class="time-box"><span class="time-val">${d}</span><span class="time-unit">Days</span></div>
+            <div class="time-sep">:</div>
+            <div class="time-box"><span class="time-val">${String(h).padStart(2,'0')}</span><span class="time-unit">Hrs</span></div>
+            <div class="time-sep">:</div>
+            <div class="time-box"><span class="time-val">${String(m).padStart(2,'0')}</span><span class="time-unit">Mins</span></div>
+          </div>
+        </div>`;
+    }
+  }
+
+  // Progress
+  const totalMiles = completed.length * 7000;
+  const pct        = Math.min(Math.round((totalMiles / 25000) * 100), 100);
+  const progText   = pct >= 100 ? 'More than once around the globe!' : `Almost ${pct}% around the globe`;
+
+  // Map story lines
+  const mapStory = [
+    lastDest ? `<div class="map-story">Just back from <span class="highlight-past">${lastDest}</span></div>` : '',
+    nextDest ? `<div class="map-story-next">Next stop: <span class="highlight-future">${nextDest}</span></div>` : '<div class="map-story-next">Where to next? 🗺️</div>',
+  ].join('');
+
+  return `
+    <div class="dashboard-header">
+      <div class="map-card">
+        <div class="map-bg"></div>
+        <div class="flight-path"></div>
+        <div class="pin pin-past"></div>
+        <div class="pin pin-next"></div>
+        <div>
+          <div class="map-title">Journey Tracker</div>
+          ${mapStory}
+        </div>
+        <div class="banner-stats">
+          <div class="bstat"><div class="bstat-num">${trips.length}</div><div class="bstat-label">Trips</div></div>
+          <div class="bstat"><div class="bstat-num">${upcoming}</div><div class="bstat-label">Upcoming</div></div>
+          <div class="bstat"><div class="bstat-num">${countries}</div><div class="bstat-label">Countries</div></div>
+        </div>
+      </div>
+      <div class="banner-sidebar">
+        ${countdownHTML}
+        <div class="tracker-card">
+          <div class="tracker-text">✈️ ${totalMiles.toLocaleString()} miles flown<br><span class="tracker-sub">${progText}</span></div>
+          <div class="progress-bar-bg"><div class="progress-fill" style="width:${pct}%"></div></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+
+function renderHome(filter) {
+  if (filter !== undefined) currentFilter = filter;
+  const trips    = DB.trips    || [];
+  const homepage = DB.homepage || [];
+  const countries= [...new Set(trips.map(t => t[C.COUNTRY]).filter(Boolean))].length;
+  const nights   = trips.reduce((s, t) => s + (parseInt(t[C.NIGHTS]) || 0), 0);
+  const upcoming = trips.filter(t => t[C.STATUS] === 'Upcoming').length;
+
+  // Sort all trips by start date ascending (soonest first)
+  const sorted = [...trips].sort((a, b) => new Date(a[C.START]) - new Date(b[C.START]));
+
+  // Build sections in order: Ongoing → Upcoming → Completed → Cancelled
+  const sections = ['Ongoing','Upcoming','Completed','Cancelled'];
+  const sectionsHTML = sections.map(status => {
+    const group = sorted.filter(t => t[C.STATUS] === status);
+    if (!group.length) return ''; // hide empty sections
+    return `
+      <div class="trips-section">
+        <div class="trips-section-title">${status} — ${group.length} trip${group.length!==1?'s':''}</div>
+        <div class="trips-grid">${group.map(t => buildTripCard(t, homepage)).join('')}</div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('homeContent').innerHTML = `
+    <div class="home-hero">
+      ${buildBanner(trips, upcoming, countries, nights)}
+    </div>
+    <div class="trips-wrap">
+      ${sectionsHTML || '<div class="no-trips" style="padding:40px;text-align:center;color:var(--mist)">No trips yet.</div>'}
+    </div>`;
+}
+
+function buildTripCard(trip, homepage) {
+  const id     = trip[C.TRIP_ID];
+  const cfg    = homepage.find(h => h[C.TRIP_ID] === id) || {};
+  const emoji  = cfg[C.EMOJI]   || '✈️';
+  const gradS  = cfg[C.GRAD_S]  || '#0c3547';
+  const gradE  = cfg[C.GRAD_E]  || '#1a6db5';
+  const status = trip[C.STATUS] || 'Upcoming';
+  const notes  = cfg['Notes']   || trip[C.NOTES] || '';
+
+  const checks = [
+    { label:'Flights',    icon:'✈',  state: cfg[C.CHK_FL] || 'missing' },
+    { label:'Hotel',      icon:'🏨', state: cfg[C.CHK_HT] || 'missing' },
+    { label:'Visa',       icon:'🛂', state: cfg[C.CHK_VI] || 'missing' },
+    { label:'Car Rental', icon:'🚗', state: cfg[C.CHK_CR] || 'missing' },
+    { label:'Airbnb',     icon:'🏡', state: cfg[C.CHK_AB] || 'missing' },
+  ];
+  const pills = checks.map(({label, icon, state}) => {
+    const cls = state==='done'?'done':state==='na'?'na':'missing';
+    const ico = state==='done'?svgCheck():state==='na'?svgMinus():svgX();
+    return `<span class="check-pill ${cls}">${ico} ${icon} ${label}</span>`;
+  }).join('');
+
+  return `
+    <div class="trip-card" onclick="showDetail('${id}')">
+      <div class="trip-card-img">
+        <div class="trip-card-img-bg" style="background:linear-gradient(135deg,${gradS},${gradE})">${emoji}</div>
+        <div class="trip-card-img-overlay"></div>
+        <div class="trip-card-status status-${status}">${status}</div>
+        <div class="trip-card-dest">${trip[C.DEST]||trip[C.TRIP_NAME]}<small>${trip[C.COUNTRY]||''}</small></div>
+      </div>
+      <div class="trip-card-body">
+        <div class="trip-card-meta">
+          <div class="trip-card-dates">📅 ${formatDate(trip[C.START])} – ${formatDate(trip[C.END])}</div>
+          <div class="trip-card-travelers">👨‍👩‍👦 ${(trip[C.TRAVELERS]||'').split(',')[0].trim()}…</div>
+        </div>
+        <div class="checklist">${pills}</div>
+        ${notes?`<div class="trip-card-notes">${notes}</div>`:''}
+        <div class="trip-card-footer">
+          <div class="trip-card-id">${id}</div>
+          <div class="trip-card-cta">View Itinerary →</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  DETAIL PAGE
+// ══════════════════════════════════════════════════════════════
+function buildReminderPills(cfg) {
+  const pills = [];
+  if (cfg['Flights'] === 'missing')
+    pills.push('⚠️ ✈️ Flights needed');
+  // Merge hotel + airbnb into one "Acco needed" pill
+  const accoMissing = cfg['Hotel'] === 'missing' || cfg['Airbnb'] === 'missing';
+  if (accoMissing)
+    pills.push('⚠️ 🏨 Acco needed');
+  if (cfg['Visa'] === 'missing')
+    pills.push('⚠️ 🛂 Visa needed');
+  if (cfg['Car Rental'] === 'missing')
+    pills.push('⚠️ 🚗 Car rental needed');
+  return pills.map(p => `<div class="hero-pill reminder-pill">${p}</div>`).join('');
+}
+
+function buildDetailHTML(tripId) {
+  const trip  = (DB.trips    ||[]).find(t=>t[C.TRIP_ID]===tripId);
+  const cfg   = (DB.homepage ||[]).find(h=>h[C.TRIP_ID]===tripId)||{};
+  const fls   = (DB.flights  ||[]).filter(r=>r[C.TRIP_ID]===tripId);
+  const hts   = (DB.hotels   ||[]).filter(r=>r[C.TRIP_ID]===tripId);
+  const sts   = (DB.stays    ||[]).filter(r=>r[C.TRIP_ID]===tripId);
+  const cars  = (DB.carRental||[]).filter(r=>r[C.TRIP_ID]===tripId);
+
+  if (!trip) return `<div class="detail-main" style="text-align:center;padding:60px;color:var(--mist)">Trip not found.</div>`;
+
+  // Timeline
+  const tlRaw = [
+    ...fls.map(f=>({cls:'flight',date:formatDate(f[C.FL_DEP_D]), label:`${(f[C.FL_DEP_AP]||'').split(' ')[0]}→${(f[C.FL_ARR_AP]||'').split(' ')[0]}`})),
+    ...hts.map(h=>({cls:'hotel', date:formatDate(h[C.HT_CI]),    label:(h[C.HT_NAME]||'').split(' ').slice(0,2).join(' ')})),
+    ...sts.map(s=>({cls:'stay',  date:formatDate(s[C.ST_CI]),     label:(s[C.ST_NAME]||'').split(' ').slice(0,2).join(' ')})),
+    ...cars.map(cr=>({cls:'car', date:formatDate(cr[C.CR_PUD]),   label:cr[C.CR_CO]||'Car'})),
+  ].sort((a,b)=>new Date(a.date)-new Date(b.date));
+
+  const tlHTML = tlRaw.map((item,i)=>`
+    ${i>0?'<div class="tl-connector"></div>':''}
+    <div class="tl-item"><div class="tl-dot ${item.cls}"></div><div class="tl-date">${item.date}</div><div class="tl-label">${item.label}</div></div>`).join('');
+
+  const flCost = sumCosts(fls,  C.FL_PRICE,  C.FL_CCY);
+  const htCost = sumCosts(hts,  C.HT_PRICE,  C.HT_CCY);
+  const stCost = sumCosts(sts,  C.ST_PRICE,  C.ST_CCY);
+  const crCost = sumCosts(cars, C.CR_PRICE,  C.CR_CCY);
+
+  return `
+    <div class="detail-hero">
+      <div class="detail-hero-dest">${trip[C.DEST]||trip[C.TRIP_NAME]} ${cfg[C.EMOJI]||'✈️'}</div>
+      <div class="detail-hero-meta">
+        <div class="hero-pill">📅 ${formatDate(trip[C.START])} – ${formatDate(trip[C.END])}</div>
+        <div class="hero-pill">👨‍👩‍👦 ${trip[C.TRAVELERS]}</div>
+        <div class="hero-pill">🌙 ${trip[C.NIGHTS]} Nights</div>
+        ${buildReminderPills(cfg)}
+      </div>
+    </div>
+
+    ${tlRaw.length?`
+    <div class="timeline-wrap">${tlHTML}</div>
+    <div class="legend">
+      ${fls.length ?'<div class="legend-item"><div class="legend-dot" style="background:#60a5fa"></div>Flights</div>':''}
+      ${hts.length ?'<div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>Hotel</div>':''}
+      ${sts.length ?'<div class="legend-item"><div class="legend-dot" style="background:#f87171"></div>Airbnb/Rental</div>':''}
+      ${cars.length?'<div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div>Car Rental</div>':''}
+    </div>`:''}
+
+    <div class="detail-main">
+      ${fls.length  ?`<div class="section-label">✈ Flights</div>${fls.map(buildFlightTicket).join('')}`:''}
+      ${hts.length  ?`<div class="section-label">🏨 Hotel</div>${hts.map(buildHotelTicket).join('')}`:''}
+      ${sts.length  ?`<div class="section-label">🏡 Holiday Rental</div>${sts.map(buildStayTicket).join('')}`:''}
+      ${cars.length ?`<div class="section-label">🚗 Car Rental</div>${cars.map(buildCarTicket).join('')}`:''}
+      <div class="back-btn-wrap">
+        <button class="back-btn-bottom" onclick="showHome()">← All Trips</button>
+      </div>
+    </div>`;
+}
+
+function buildFlightTicket(f) {
+  const dCode = (f[C.FL_DEP_AP]||'').split(' ')[0]||f[C.FL_DEP_AP]||'???';
+  const aCode = (f[C.FL_ARR_AP]||'').split(' ')[0]||f[C.FL_ARR_AP]||'???';
+  return `
+    <div class="ticket flight">
+      <div class="ticket-main">
+        <div class="ticket-head">
+          <span class="brand-name">${f[C.FL_AIRLINE]||'Airline'}</span>
+          <span class="type-badge">${f[C.FL_CLASS]||'Economy'} · ${f[C.FL_NUM]||''}</span>
+        </div>
+        <div class="flight-route">
+          <div><div class="airport-code">${dCode}</div><div class="airport-name">${f[C.FL_DEP_CITY]||''}</div></div>
+          <div class="flight-divider"><div class="flight-line"></div><div class="flight-plane">✈</div><div class="flight-dur">Non-stop</div></div>
+          <div style="text-align:right"><div class="airport-code">${aCode}</div><div class="airport-name">${f[C.FL_ARR_CITY]||''}</div></div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-block"><span class="dl">Date</span><span class="dv">${formatDate(f[C.FL_DEP_D])}</span></div>
+          <div class="detail-block"><span class="dl">Departs</span><span class="dv">${formatTime(f[C.FL_DEP_T])}</span></div>
+          <div class="detail-block"><span class="dl">Arrives</span><span class="dv">${formatTime(f[C.FL_ARR_T])}</span></div>
+          <div class="detail-block"><span class="dl">Baggage</span><span class="dv">${f[C.FL_BAG]||'—'}</span></div>
+
+        </div>
+      </div>
+      <div class="ticket-stub">
+        <div><div class="stub-label">Booking Ref</div><div class="stub-ref" style="color:var(--sky)">${f[C.FL_REF]||'—'}</div></div>
+        <div class="barcode"></div>
+        <div><div class="stub-label">Platform</div><div class="stub-value">${f[C.FL_PLAT]||'Direct'}</div></div>
+      </div>
+    </div>`;
+}
+
+function buildHotelTicket(h) {
+  const nts = parseInt(h[C.HT_NIGHTS])||1;
+  return `
+    <div class="ticket hotel">
+      <div class="ticket-main">
+        <div class="ticket-head">
+          <span class="brand-name">Hotel Stay · ${h[C.HT_PLAT]||''}</span>
+          <span class="type-badge">${nts}N</span>
+        </div>
+        <div class="prop-title">${h[C.HT_NAME]||'Hotel'}</div>
+        <div class="prop-address">📍 ${[h[C.HT_ADDR],h[C.HT_CITY],h[C.COUNTRY]].filter(Boolean).join(', ')}</div>
+        <div class="stay-range">
+          <div class="stay-date-block"><div class="dl">Check-in</div><div class="dv">${formatDate(h[C.HT_CI])}</div></div>
+          <div class="stay-arrow">→</div>
+          <div class="stay-date-block"><div class="dl">Check-out</div><div class="dv">${formatDate(h[C.HT_CO])}</div></div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-block"><span class="dl">Room</span><span class="dv">${h[C.HT_ROOM]||'—'}</span></div>
+          <div class="detail-block"><span class="dl">Guests</span><span class="dv">${h[C.HT_GUESTS]||'—'}</span></div>
+          ${h[C.HT_CANCEL]?`<div class="detail-block"><span class="dl">Free Cancel</span><span class="dv">${h[C.HT_CANCEL]}</span></div>`:''}
+          ${h[C.HT_PRICE]?`<div class="detail-block"><span class="dl">Total</span><span class="dv">${h[C.HT_CCY]} ${h[C.HT_PRICE]}</span></div>`:''}
+        </div>
+      </div>
+      <div class="ticket-stub">
+        <div><div class="stub-label">Confirmation #</div><div class="stub-ref" style="color:var(--amber)">${h[C.HT_REF]||'—'}</div></div>
+        <div class="barcode"></div>
+        <div><div class="stub-label">Platform</div><div class="stub-value">${h[C.HT_PLAT]||'—'}</div></div>
+      </div>
+    </div>`;
+}
+
+function buildStayTicket(s) {
+  return `
+    <div class="ticket stay">
+      <div class="ticket-main">
+        <div class="ticket-head">
+          <span class="brand-name">${s[C.ST_PLAT]||'Airbnb'} · ${s[C.ST_HOST]||''}</span>
+          <span class="type-badge">${s[C.ST_NIGHTS]||''}N</span>
+        </div>
+        <div class="prop-title">${s[C.ST_NAME]||'Property'}</div>
+        <div class="prop-address">📍 ${[s[C.ST_ADDR],s[C.ST_CITY]].filter(Boolean).join(', ')}</div>
+        <div class="stay-range">
+          <div class="stay-date-block">
+            <div class="dl">Check-in</div><div class="dv">${formatDate(s[C.ST_CI])}</div>
+            ${s[C.ST_CIT]?`<div class="time-sublabel">${formatTime(s[C.ST_CIT])}</div>`:''}
+          </div>
+          <div class="stay-arrow">→</div>
+          <div class="stay-date-block">
+            <div class="dl">Check-out</div><div class="dv">${formatDate(s[C.ST_CO])}</div>
+            ${s[C.ST_COT]?`<div class="time-sublabel">${formatTime(s[C.ST_COT])}</div>`:''}
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-block"><span class="dl">Guests</span><span class="dv">${s[C.ST_GUESTS]||'—'}</span></div>
+          ${s[C.ST_ACCESS]?`<div class="detail-block"><span class="dl">Access</span><span class="dv">${s[C.ST_ACCESS]}</span></div>`:''}
+          ${s[C.ST_PRICE]?`<div class="detail-block"><span class="dl">Total</span><span class="dv">${s[C.ST_CCY]} ${s[C.ST_PRICE]}</span></div>`:''}
+        </div>
+      </div>
+      <div class="ticket-stub">
+        <div><div class="stub-label">Booking Ref</div><div class="stub-ref" style="color:var(--rose);font-size:0.85rem">${s[C.ST_REF]||'—'}</div></div>
+        <div class="barcode"></div>
+        <div><div class="stub-label">Platform</div><div class="stub-value">${s[C.ST_PLAT]||'Airbnb'}</div></div>
+      </div>
+    </div>`;
+}
+
+function buildCarTicket(cr) {
+  return `
+    <div class="ticket car">
+      <div class="ticket-main">
+        <div class="ticket-head">
+          <span class="brand-name">Car Rental · ${cr[C.CR_CO]||''}</span>
+          <span class="type-badge">${cr[C.CR_TRANS]||'Automatic'}</span>
+        </div>
+        <div class="prop-title">${cr[C.CR_VEH]||'Vehicle'}</div>
+        <div class="prop-address">📍 Pickup: ${cr[C.CR_PUL]||''}</div>
+        <div class="stay-range">
+          <div class="stay-date-block">
+            <div class="dl">Pickup</div><div class="dv">${formatDate(cr[C.CR_PUD])}</div>
+            ${cr[C.CR_PUT]?`<div class="time-sublabel">${formatTime(cr[C.CR_PUT])}</div>`:''}
+          </div>
+          <div class="stay-arrow">→</div>
+          <div class="stay-date-block">
+            <div class="dl">Return</div><div class="dv">${formatDate(cr[C.CR_RED])}</div>
+            ${cr[C.CR_RET]?`<div class="time-sublabel">${formatTime(cr[C.CR_RET])}</div>`:''}
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-block"><span class="dl">Protection</span><span class="dv">${cr[C.CR_PROT]||'—'}</span></div>
+          ${cr[C.CR_ADD]?`<div class="detail-block"><span class="dl">Add-ons</span><span class="dv">${cr[C.CR_ADD]}</span></div>`:''}
+
+        </div>
+      </div>
+      <div class="ticket-stub">
+        <div><div class="stub-label">Booking #</div><div class="stub-ref" style="color:#6d28d9">${cr[C.CR_REF]||'—'}</div></div>
+        <div class="barcode"></div>
+        <div><div class="stub-label">Return At</div><div class="stub-value">${cr[C.CR_REL]||'—'}</div></div>
+      </div>
+    </div>`;
+}
+
+// HELPERS
+function sumCosts(rows, pk, ck) {
+  if (!rows.length) return null;
+  const map = {};
+  rows.forEach(r => { const a=parseFloat(r[pk]); const c=r[ck]||''; if(!isNaN(a)&&c) map[c]=(map[c]||0)+a; });
+  const str = Object.entries(map).map(([c,v])=>`${c} ${v.toFixed(2)}`).join(' + ');
+  return str || null;
+}
+function formatDate(raw) {
+  if (!raw) return '';
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const d = new Date(raw);
+  if (isNaN(d)) return raw;
+  return d.getDate().toString().padStart(2,'0') + ' ' + months[d.getMonth()] + ' ' + String(d.getFullYear()).slice(2);
+}
+
+function formatTime(raw) {
+  if (!raw) return '';
+  const d = new Date(raw);
+  if (isNaN(d)) return raw;
+  // If year is 1899/1900 it's a time-only value from Sheets
+  if (d.getFullYear() <= 1900) {
+    const h = d.getHours().toString().padStart(2,'0');
+    const m = d.getMinutes().toString().padStart(2,'0');
+    return h + ':' + m;
+  }
+  // Otherwise it's a full datetime — extract time part
+  const h = d.getHours().toString().padStart(2,'0');
+  const m = d.getMinutes().toString().padStart(2,'0');
+  return h + ':' + m;
+}
+
+function svgCheck(){return`<svg viewBox=""0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="11" height="11"><path d="M5 13l4 4L19 7"/></svg>`;}
+function svgX()   {return`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="11" height="11"><path d="M6 18L18 6M6 6l12 12"/></svg>`;}
+function svgMinus(){return`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="11" height="11"><path d="M5 12h14"/></svg>`;}
+
+loadData();
+</script>
+</body>
+</html>
