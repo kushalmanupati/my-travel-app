@@ -333,17 +333,12 @@ const C = {
   FL_CLASS:'Cabin Class', FL_BAG:'Baggage Allowance',
   FL_REF:'Booking Reference', FL_PRICE:'Price Paid', FL_CCY:'Currency',
   FL_PLAT:'Booking Platform',
-  HT_NAME:'Hotel Name', HT_ADDR:'Address', HT_CITY:'City',
+  HT_TYPE:'Type', HT_NAME:'Hotel Name', HT_ADDR:'Address', HT_CITY:'City',
   HT_CI:'Check-in Date', HT_CO:'Check-out Date', HT_NIGHTS:'Nights',
-  HT_ROOM:'Room Type', HT_GUESTS:'Guests', HT_CANCEL:'Free Cancellation Until',
+  HT_ROOM:'Room Type', HT_GUESTS:'Guests', HT_HOST:'Host Name',
+  HT_ACCESS:'Access Instructions', HT_CANCEL:'Free Cancellation Until',
   HT_PLAT:'Booking Platform', HT_PRICE:'Price Paid', HT_CCY:'Currency',
   HT_REF:'Booking Reference',
-  ST_NAME:'Property Name', ST_ADDR:'Address', ST_CITY:'City',
-  ST_CI:'Check-in Date', ST_CIT:'Check-in Time',
-  ST_CO:'Check-out Date', ST_COT:'Check-out Time',
-  ST_NIGHTS:'Nights', ST_GUESTS:'Guests', ST_HOST:'Host Name',
-  ST_ACCESS:'Access Instructions', ST_PLAT:'Booking Platform',
-  ST_PRICE:'Price Paid', ST_CCY:'Currency', ST_REF:'Booking Reference',
   CR_CO:'Rental Company', CR_VEH:'Vehicle', CR_TRANS:'Transmission',
   CR_PUL:'Pickup Location', CR_PUD:'Pickup Date', CR_PUT:'Pickup Time',
   CR_REL:'Return Location', CR_RED:'Return Date', CR_RET:'Return Time',
@@ -604,8 +599,9 @@ function buildDetailHTML(tripId) {
   const trip  = (DB.trips    ||[]).find(t=>t[C.TRIP_ID]===tripId);
   const cfg   = (DB.homepage ||[]).find(h=>h[C.TRIP_ID]===tripId)||{};
   const fls   = (DB.flights  ||[]).filter(r=>r[C.TRIP_ID]===tripId);
-  const hts   = (DB.hotels   ||[]).filter(r=>r[C.TRIP_ID]===tripId);
-  const sts   = (DB.stays    ||[]).filter(r=>r[C.TRIP_ID]===tripId);
+  const allAcco = (DB.hotels ||[]).filter(r=>r[C.TRIP_ID]===tripId);
+  const hts     = allAcco.filter(r=>(r[C.HT_TYPE]||'Hotel').toLowerCase()!=='airbnb');
+  const sts     = allAcco.filter(r=>(r[C.HT_TYPE]||'').toLowerCase()==='airbnb');
   const cars  = (DB.carRental||[]).filter(r=>r[C.TRIP_ID]===tripId);
 
   if (!trip) return `<div class="detail-main" style="text-align:center;padding:60px;color:var(--mist)">Trip not found.</div>`;
@@ -614,7 +610,7 @@ function buildDetailHTML(tripId) {
   const tlRaw = [
     ...fls.map(f=>({cls:'flight',date:formatDate(f[C.FL_DEP_D]), label:`${(f[C.FL_DEP_AP]||'').split(' ')[0]}→${(f[C.FL_ARR_AP]||'').split(' ')[0]}`})),
     ...hts.map(h=>({cls:'hotel', date:formatDate(h[C.HT_CI]),    label:(h[C.HT_NAME]||'').split(' ').slice(0,2).join(' ')})),
-    ...sts.map(s=>({cls:'stay',  date:formatDate(s[C.ST_CI]),     label:(s[C.ST_NAME]||'').split(' ').slice(0,2).join(' ')})),
+    ...sts.map(s=>({cls:'stay',  date:formatDate(s[C.HT_CI]),     label:(s[C.HT_NAME]||'').split(' ').slice(0,2).join(' ')})),
     ...cars.map(cr=>({cls:'car', date:formatDate(cr[C.CR_PUD]),   label:cr[C.CR_CO]||'Car'})),
   ].sort((a,b)=>new Date(a.date)-new Date(b.date));
 
@@ -624,7 +620,7 @@ function buildDetailHTML(tripId) {
 
   const flCost = sumCosts(fls,  C.FL_PRICE,  C.FL_CCY);
   const htCost = sumCosts(hts,  C.HT_PRICE,  C.HT_CCY);
-  const stCost = sumCosts(sts,  C.ST_PRICE,  C.ST_CCY);
+  const stCost = sumCosts(sts,  C.HT_PRICE,  C.HT_CCY);
   const crCost = sumCosts(cars, C.CR_PRICE,  C.CR_CCY);
 
   return `
@@ -725,32 +721,29 @@ function buildStayTicket(s) {
     <div class="ticket stay">
       <div class="ticket-main">
         <div class="ticket-head">
-          <span class="brand-name">${s[C.ST_PLAT]||'Airbnb'} · ${s[C.ST_HOST]||''}</span>
-          <span class="type-badge">${s[C.ST_NIGHTS]||''}N</span>
+          <span class="brand-name">${s[C.HT_PLAT]||'Airbnb'} · ${s[C.HT_HOST]||''}</span>
+          <span class="type-badge">${s[C.HT_NIGHTS]||''}N</span>
         </div>
-        <div class="prop-title">${s[C.ST_NAME]||'Property'}</div>
-        <div class="prop-address">📍 ${[s[C.ST_ADDR],s[C.ST_CITY]].filter(Boolean).join(', ')}</div>
+        <div class="prop-title">${s[C.HT_NAME]||'Property'}</div>
+        <div class="prop-address">📍 ${[s[C.HT_ADDR],s[C.HT_CITY]].filter(Boolean).join(', ')}</div>
         <div class="stay-range">
           <div class="stay-date-block">
-            <div class="dl">Check-in</div><div class="dv">${formatDate(s[C.ST_CI])}</div>
-            ${s[C.ST_CIT]?`<div class="time-sublabel">${formatTime(s[C.ST_CIT])}</div>`:''}
+            <div class="dl">Check-in</div><div class="dv">${formatDate(s[C.HT_CI])}</div>
           </div>
           <div class="stay-arrow">→</div>
           <div class="stay-date-block">
-            <div class="dl">Check-out</div><div class="dv">${formatDate(s[C.ST_CO])}</div>
-            ${s[C.ST_COT]?`<div class="time-sublabel">${formatTime(s[C.ST_COT])}</div>`:''}
+            <div class="dl">Check-out</div><div class="dv">${formatDate(s[C.HT_CO])}</div>
           </div>
         </div>
         <div class="detail-row">
-          <div class="detail-block"><span class="dl">Guests</span><span class="dv">${s[C.ST_GUESTS]||'—'}</span></div>
-          ${s[C.ST_ACCESS]?`<div class="detail-block"><span class="dl">Access</span><span class="dv">${s[C.ST_ACCESS]}</span></div>`:''}
-          ${s[C.ST_PRICE]?`<div class="detail-block"><span class="dl">Total</span><span class="dv">${s[C.ST_CCY]} ${s[C.ST_PRICE]}</span></div>`:''}
+          <div class="detail-block"><span class="dl">Guests</span><span class="dv">${s[C.HT_GUESTS]||'—'}</span></div>
+          ${s[C.HT_ACCESS]?`<div class="detail-block"><span class="dl">Access</span><span class="dv">${s[C.HT_ACCESS]}</span></div>`:''}
         </div>
       </div>
       <div class="ticket-stub">
-        <div><div class="stub-label">Booking Ref</div><div class="stub-ref" style="color:var(--rose);font-size:0.85rem">${s[C.ST_REF]||'—'}</div></div>
+        <div><div class="stub-label">Booking Ref</div><div class="stub-ref" style="color:var(--rose);font-size:0.85rem">${s[C.HT_REF]||'—'}</div></div>
         <div class="barcode"></div>
-        <div><div class="stub-label">Platform</div><div class="stub-value">${s[C.ST_PLAT]||'Airbnb'}</div></div>
+        <div><div class="stub-label">Platform</div><div class="stub-value">${s[C.HT_PLAT]||'Airbnb'}</div></div>
       </div>
     </div>`;
 }
