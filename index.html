@@ -113,12 +113,12 @@
     .status-Completed{background:#f1f5f9;color:#64748b;}
     .status-Cancelled{background:#fee2e2;color:#be2f2f;}
 
-    .trip-card-body{padding:18px 18px 14px;}
-    .trip-card-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+    .trip-card-body{padding:14px 14px 12px;}
+    .trip-card-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;}
     .trip-card-dates{font-size:0.8rem;color:var(--mist);font-weight:500;}
-    .trip-card-travelers{font-size:0.75rem;background:var(--cloud);padding:3px 10px;border-radius:20px;color:var(--mist);font-weight:600;}
-    .checklist{display:flex;flex-wrap:wrap;gap:7px;margin-top:6px;}
-    .check-pill{display:flex;align-items:center;gap:3px;padding:5px 8px;border-radius:20px;font-size:0.85rem;font-weight:600;}
+    .trip-card-travelers{font-size:0.72rem;background:var(--cloud);padding:3px 10px;border-radius:20px;color:var(--mist);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;}
+    .checklist{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px;}
+    .check-pill{display:flex;align-items:center;justify-content:center;gap:4px;padding:7px 4px;border-radius:10px;font-size:1rem;font-weight:600;width:100%;}
     .check-pill.done{background:var(--green-pale);color:var(--green);}
     .check-pill.missing{background:#fff7ed;color:#9a3412;}
     .check-pill.na{background:var(--cloud);color:var(--mist-lt);text-decoration:line-through;opacity:0.6;}
@@ -561,8 +561,8 @@ function buildTripCard(trip, homepage) {
       </div>
       <div class="trip-card-body">
         <div class="trip-card-meta">
-          <div class="trip-card-dates">📅 ${formatDate(trip[C.START])} – ${formatDate(trip[C.END])}</div>
-          <div class="trip-card-travelers">👨‍👩‍👦 ${(trip[C.TRAVELERS]||'').split(',')[0].trim()}…</div>
+          <div class="trip-card-dates">📅 ${formatDateShort(trip[C.START])} – ${formatDateShort(trip[C.END])}</div>
+          <div class="trip-card-travelers">👨‍👩‍👦 ${(trip[C.TRAVELERS]||'')}</div>
         </div>
         <div class="checklist">${pills}</div>
         ${notes?`<div class="trip-card-notes">${notes}</div>`:''}
@@ -796,6 +796,14 @@ function formatDate(raw) {
   const d = new Date(raw);
   if (isNaN(d)) return raw;
   return d.getDate().toString().padStart(2,'0') + ' ' + months[d.getMonth()] + ' ' + String(d.getFullYear()).slice(2);
+}
+
+function formatDateShort(raw) {
+  if (!raw) return '';
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const d = new Date(raw);
+  if (isNaN(d)) return raw;
+  return d.getDate().toString().padStart(2,'0') + ' ' + months[d.getMonth()];
 }
 
 function formatTime(raw) {
